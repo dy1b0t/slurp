@@ -76,7 +76,7 @@ func setFlags() {
 	domainlistCmd.PersistentFlags().StringVarP(&cfgPermutationsFile, "permutations", "p", "./permutations.json", "Permutations file location")
 	domainlistCmd.PersistentFlags().BoolVarP(&cfgDebug, "debug", "d", false, "Debug output")
 	domainlistCmd.PersistentFlags().IntVarP(&cfgConcurrency, "concurrency", "c", 0, "Connection concurrency; default is the system CPU count")
-	domainlistCmd.PersistentFlags().BoolVarP(&cfgNoStats, "nostats", "ns", false, "Do not record any stats and only output the PUBLIC and UNKNOWN buckets to output file")
+	domainlistCmd.PersistentFlags().BoolVarP(&cfgNoStats, "nostats", "n", false, "Do not record any stats and only output the PUBLIC and UNKNOWN buckets to output file")
 
 }
 

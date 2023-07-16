@@ -35,7 +35,7 @@ In this mode, you are using the AWS API **with credentials** on a specific accou
 #### Domainlist
 -dy1b0t contribution: 
 Add a domainlist.txt file with one domain per line to iterate through multiple domains in one initialization.
-Added a flag  `-ns` useable for domainlist, that does not cache the domain permutations as this can get very large when doing multiple domains. Therefore your output will be limited to PUBLIC/UNKNOWN in output.txt file. Modify output.txt directory location as needed in scanner/external/external.go.
+Added a flag  `-n` useable for domainlist, that does not cache the domain permutations as this can get very large when doing multiple domains. Therefore your output will be limited to PUBLIC/UNKNOWN in output.txt file. Modify output.txt directory location as needed in scanner/external/external.go.
 
 ## Usage
 - `slurp domain <-t|--target> example.com` will enumerate the S3 domains for a specific target.
