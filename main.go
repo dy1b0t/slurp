@@ -18,62 +18,105 @@
 package main
 
 import (
-    "github.com/aws/aws-sdk-go/aws"
-    log "github.com/sirupsen/logrus"
+	"bufio"
+	"os"
+	"os/exec"
 
-    "slurp/scanner/external"
-    "slurp/scanner/cmd"
-    "slurp/scanner/intern"
+	"github.com/aws/aws-sdk-go/aws"
+	log "github.com/sirupsen/logrus"
+
+	"slurp/scanner/cmd"
+	"slurp/scanner/external"
+	"slurp/scanner/intern"
+	"slurp/scanner/stats"
 )
 
 // Global config
 var cfg cmd.Config
 
 func main() {
-    cfg = cmd.Init("slurp", "Public buckets finder", "Public buckets finder")
+	cfg = cmd.Init("slurp", "Public buckets finder", "Public buckets finder")
+	cfg.Stats = stats.NewStats()
 
-    switch cfg.State {
-    case "DOMAIN":
-        external.Init(&cfg)
+	switch cfg.State {
+	case "DOMAIN":
+		for _, domain := range cfg.Domains {
+			if !cfg.NoStats {
+				cfg.Stats = stats.NewStats() // This will create a new stats instance, clearing the old one
+			}
+			cfg.Domains = []string{domain}
+			external.Init(&cfg)
 
-        log.Info("Building permutations....")
-        go external.PermutateDomainRunner(&cfg)
+			log.Info("Building permutations....")
+			go external.PermutateDomainRunner(&cfg)
 
-        log.Info("Processing permutations....")
-        external.CheckDomainPermutations(&cfg)
+			log.Info("Processing permutations....")
+			external.CheckDomainPermutations(&cfg)
 
-        // Print stats info
-        log.Printf("%+v", cfg.Stats)
-    case "KEYWORD":
-        external.Init(&cfg)
+			// Print stats info
+			log.Printf("%+v", cfg.Stats)
+		}
+	case "KEYWORD":
+		external.Init(&cfg)
 
-        log.Info("Building permutations....")
-        go external.PermutateKeywordRunner(&cfg)
+		log.Info("Building permutations....")
+		go external.PermutateKeywordRunner(&cfg)
 
-        log.Info("Processing permutations....")
-        external.CheckKeywordPermutations(&cfg)
+		log.Info("Processing permutations....")
+		external.CheckKeywordPermutations(&cfg)
 
-        // Print stats info
-        log.Printf("%+v", cfg.Stats)
-    case "INTERNAL":
-        var config aws.Config
-        config.Region = &cfg.Region
+		// Print stats info
+		log.Printf("%+v", cfg.Stats)
+	case "INTERNAL":
+		var config aws.Config
+		config.Region = &cfg.Region
 
-        log.Info("Determining public buckets....")
-        buckets, err3 := intern.GetPublicBuckets(config)
-        if err3 != nil {
-            log.Error(err3)
-        }
+		log.Info("Determining public buckets....")
+		buckets, err3 := intern.GetPublicBuckets(config)
+		if err3 != nil {
+			log.Error(err3)
+		}
 
-        for bucket := range buckets.ACL {
-            log.Infof("S3 public bucket (ACL): %s", buckets.ACL[bucket])
-        }
+		for bucket := range buckets.ACL {
+			log.Infof("S3 public bucket (ACL): %s", buckets.ACL[bucket])
+		}
 
-        for bucket := range buckets.Policy {
-            log.Infof("S3 public bucket (Policy): %s", buckets.Policy[bucket])
-        }
+		for bucket := range buckets.Policy {
+			log.Infof("S3 public bucket (Policy): %s", buckets.Policy[bucket])
+		}
+	case "DOMAINLIST":
+		file, err := os.Open("domainlist.txt")
+		if err != nil {
+			log.Error("Error opening domainlist.txt:", err)
+			os.Exit(1)
+		}
+		defer file.Close()
 
-    default:
-        log.Fatal("Check help")
-    }
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			domain := scanner.Text()
+
+			if !cfg.NoStats {
+				cfg.Stats = stats.NewStats() // This will create a new stats instance, clearing the old one
+			}
+
+			cmd := exec.Command("slurp", "domain", "-t", domain)
+			output, err := cmd.Output()
+
+			if err != nil {
+				log.Error("Error running slurp command for domain:", domain, err)
+				continue
+			}
+
+			log.Infof("Output for %s: %s", domain, string(output))
+		}
+
+		if err := scanner.Err(); err != nil {
+			log.Error("Error reading from domainlist.txt:", err)
+			os.Exit(1)
+		}
+
+	default:
+		log.Fatal("Check help")
+	}
 }
