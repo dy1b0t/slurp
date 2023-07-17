@@ -222,7 +222,8 @@ func CheckDomainPermutations(cfg *cmd.Config) {
 	var max = cfg.Concurrency
 	sem = make(chan int, max)
 
-	file, err := os.OpenFile("output.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	var opLoc = "/home/dbot/bug/output/output.txt"
+	file, err := os.OpenFile(opLoc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}

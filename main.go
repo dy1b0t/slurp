@@ -34,6 +34,20 @@ import (
 // Global config
 var cfg cmd.Config
 
+func processDomain(domain string) {
+	cfg.Domains = []string{domain}
+	external.Init(&cfg)
+
+	log.Info("Building permutations....")
+	go external.PermutateDomainRunner(&cfg)
+
+	log.Info("Processing permutations....")
+	external.CheckDomainPermutations(&cfg)
+
+	// Print stats info
+	log.Printf("%+v", cfg.Stats)
+}
+
 func main() {
 	cfg = cmd.Init("slurp", "Public buckets finder", "Public buckets finder")
 	cfg.Stats = stats.NewStats()
@@ -42,19 +56,9 @@ func main() {
 	case "DOMAIN":
 		for _, domain := range cfg.Domains {
 			if !cfg.NoStats {
-				cfg.Stats = stats.NewStats() // This will create a new stats instance, clearing the old one
+				cfg.Stats = stats.NewStats()
 			}
-			cfg.Domains = []string{domain}
-			external.Init(&cfg)
-
-			log.Info("Building permutations....")
-			go external.PermutateDomainRunner(&cfg)
-
-			log.Info("Processing permutations....")
-			external.CheckDomainPermutations(&cfg)
-
-			// Print stats info
-			log.Printf("%+v", cfg.Stats)
+			processDomain(domain)
 		}
 	case "KEYWORD":
 		external.Init(&cfg)
@@ -97,23 +101,29 @@ func main() {
 			domain := scanner.Text()
 
 			if !cfg.NoStats {
-				cfg.Stats = stats.NewStats() // This will create a new stats instance, clearing the old one
+				cfg.Stats = stats.NewStats()
 			}
 
 			cmd := exec.Command("slurp", "domain", "-t", domain)
-			output, err := cmd.Output()
 
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+
+			err := cmd.Run()
 			if err != nil {
 				log.Error("Error running slurp command for domain:", domain, err)
 				continue
 			}
-
-			log.Infof("Output for %s: %s", domain, string(output))
 		}
 
 		if err := scanner.Err(); err != nil {
 			log.Error("Error reading from domainlist.txt:", err)
 			os.Exit(1)
+		}
+
+		for scanner.Scan() {
+			domain := scanner.Text()
+			processDomain(domain)
 		}
 
 	default:
